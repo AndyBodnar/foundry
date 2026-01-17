@@ -1,0 +1,107 @@
+---
+# Foundry MLOps Platform - ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: foundry-config
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry
+    app.kubernetes.io/component: config
+    app.kubernetes.io/part-of: foundry-mlops
+data:
+  # Application Configuration
+  APP_ENV: "production"
+  APP_NAME: "foundry"
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+
+  # API Configuration
+  API_HOST: "0.0.0.0"
+  API_PORT: "8080"
+  API_WORKERS: "4"
+  API_TIMEOUT: "60"
+  API_CORS_ORIGINS: "https://foundry.example.com"
+
+  # PostgreSQL Configuration
+  POSTGRES_HOST: "foundry-postgres.foundry.svc.cluster.local"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "foundry"
+  POSTGRES_POOL_SIZE: "20"
+  POSTGRES_MAX_OVERFLOW: "30"
+
+  # TimescaleDB Configuration
+  TIMESCALE_HOST: "foundry-timescaledb.foundry.svc.cluster.local"
+  TIMESCALE_PORT: "5432"
+  TIMESCALE_DB: "foundry_metrics"
+
+  # Redis Configuration
+  REDIS_HOST: "foundry-redis.foundry.svc.cluster.local"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  REDIS_POOL_SIZE: "50"
+
+  # Celery Configuration
+  CELERY_BROKER_URL: "redis://foundry-redis.foundry.svc.cluster.local:6379/1"
+  CELERY_RESULT_BACKEND: "redis://foundry-redis.foundry.svc.cluster.local:6379/2"
+  CELERY_TASK_SERIALIZER: "json"
+  CELERY_RESULT_SERIALIZER: "json"
+  CELERY_ACCEPT_CONTENT: "json"
+  CELERY_TIMEZONE: "UTC"
+  CELERY_TASK_ACKS_LATE: "true"
+  CELERY_WORKER_PREFETCH_MULTIPLIER: "1"
+
+  # S3/MinIO Configuration
+  S3_ENDPOINT: "http://foundry-minio.foundry.svc.cluster.local:9000"
+  S3_REGION: "us-east-1"
+  S3_BUCKET_ARTIFACTS: "foundry-artifacts"
+  S3_BUCKET_MODELS: "foundry-models"
+  S3_BUCKET_FEATURES: "foundry-features"
+  S3_USE_SSL: "false"
+
+  # Kafka Configuration
+  KAFKA_BOOTSTRAP_SERVERS: "foundry-kafka.foundry.svc.cluster.local:9092"
+  KAFKA_CONSUMER_GROUP: "foundry-consumers"
+  KAFKA_AUTO_OFFSET_RESET: "earliest"
+  KAFKA_ENABLE_AUTO_COMMIT: "false"
+
+  # OpenTelemetry Configuration
+  OTEL_SERVICE_NAME: "foundry-api"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger-collector.observability.svc.cluster.local:4317"
+  OTEL_TRACES_EXPORTER: "otlp"
+  OTEL_METRICS_EXPORTER: "prometheus"
+  OTEL_LOGS_EXPORTER: "otlp"
+  OTEL_PROPAGATORS: "tracecontext,baggage"
+
+  # Feature Store Configuration
+  FEATURE_STORE_ONLINE_TTL: "86400"
+  FEATURE_STORE_BATCH_SIZE: "1000"
+
+  # Model Serving Configuration
+  MODEL_CACHE_SIZE: "10"
+  MODEL_INFERENCE_TIMEOUT: "30"
+  MODEL_BATCH_TIMEOUT: "5"
+  MODEL_MAX_BATCH_SIZE: "100"
+
+  # Monitoring Configuration
+  DRIFT_DETECTION_INTERVAL: "3600"
+  DRIFT_THRESHOLD_WARNING: "0.15"
+  DRIFT_THRESHOLD_CRITICAL: "0.30"
+  METRICS_RETENTION_DAYS: "30"
+
+  # Rate Limiting
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_DEFAULT: "1000/minute"
+  RATE_LIMIT_INFERENCE: "10000/minute"
+
+  # Security Configuration
+  JWT_ALGORITHM: "HS256"
+  JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+  JWT_REFRESH_TOKEN_EXPIRE_DAYS: "7"
+  CORS_ALLOW_CREDENTIALS: "true"
+  CORS_ALLOW_METHODS: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+  CORS_ALLOW_HEADERS: "Authorization,Content-Type,X-Request-ID,X-Tenant-ID"
+
+  # Pagination
+  DEFAULT_PAGE_SIZE: "20"
+  MAX_PAGE_SIZE: "100"

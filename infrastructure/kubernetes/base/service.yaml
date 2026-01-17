@@ -1,0 +1,121 @@
+---
+# Foundry MLOps Platform - Kubernetes Services
+# API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: foundry-api
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry-api
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: foundry-mlops
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: foundry-api
+    app.kubernetes.io/component: api
+---
+# API Service - Headless for direct pod access
+apiVersion: v1
+kind: Service
+metadata:
+  name: foundry-api-headless
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry-api
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: foundry-api
+    app.kubernetes.io/component: api
+---
+# Worker Metrics Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: foundry-worker-metrics
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry-worker
+    app.kubernetes.io/component: worker
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: foundry-worker
+    app.kubernetes.io/component: worker
+---
+# Inference Service (for model serving)
+apiVersion: v1
+kind: Service
+metadata:
+  name: foundry-inference
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry-inference
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: foundry-mlops
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8081"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8081
+      protocol: TCP
+    - name: grpc
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: foundry-inference
+    app.kubernetes.io/component: inference
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: foundry-frontend
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry-frontend
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: foundry-mlops
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: foundry-frontend
+    app.kubernetes.io/component: frontend

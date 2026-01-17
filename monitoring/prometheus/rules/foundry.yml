@@ -1,0 +1,240 @@
+# Foundry MLOps Platform - Alert Rules
+# =====================================
+# This file contains all Prometheus alert rules for the Foundry platform.
+
+groups:
+  # =================================================
+  # Foundry API Alerts
+  # =================================================
+  - name: foundry-api
+    interval: 30s
+    rules:
+      - alert: FoundryAPIHighLatency
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="foundry-api"}[5m])) by (le, endpoint)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High API latency detected"
+          description: "API endpoint {{ $labels.endpoint }} p99 latency is {{ $value | humanizeDuration }} (> 500ms)"
+          runbook_url: "https://docs.foundry.ai/runbooks/high-latency"
+
+      - alert: FoundryAPIHighErrorRate
+        expr: sum(rate(http_requests_total{job="foundry-api",status=~"5.."}[5m])) / sum(rate(http_requests_total{job="foundry-api"}[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High API error rate"
+          description: "API error rate is {{ $value | humanizePercentage }} (> 1%)"
+          runbook_url: "https://docs.foundry.ai/runbooks/high-error-rate"
+
+      - alert: FoundryAPIDown
+        expr: up{job="foundry-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Foundry API is down"
+          description: "Foundry API instance {{ $labels.instance }} is not responding"
+          runbook_url: "https://docs.foundry.ai/runbooks/api-down"
+
+  # =================================================
+  # Inference Service Alerts
+  # =================================================
+  - name: foundry-inference
+    interval: 30s
+    rules:
+      - alert: InferenceHighLatency
+        expr: histogram_quantile(0.99, sum(rate(inference_latency_seconds_bucket{job="foundry-inference"}[5m])) by (le, model)) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: ml
+        annotations:
+          summary: "High inference latency"
+          description: "Model {{ $labels.model }} p99 inference latency is {{ $value | humanizeDuration }} (> 100ms)"
+
+      - alert: InferenceLowThroughput
+        expr: sum(rate(inference_requests_total{job="foundry-inference"}[5m])) < 10
+        for: 10m
+        labels:
+          severity: info
+          team: ml
+        annotations:
+          summary: "Low inference throughput"
+          description: "Inference throughput is {{ $value | humanize }} req/s"
+
+      - alert: ModelLoadingFailed
+        expr: model_load_failures_total > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: ml
+        annotations:
+          summary: "Model loading failed"
+          description: "Model {{ $labels.model }} failed to load"
+
+  # =================================================
+  # Data Drift Alerts
+  # =================================================
+  - name: foundry-drift
+    interval: 60s
+    rules:
+      - alert: DataDriftWarning
+        expr: drift_score{status="warning"} > 0.15
+        for: 1h
+        labels:
+          severity: warning
+          team: ml
+        annotations:
+          summary: "Data drift warning"
+          description: "Feature {{ $labels.feature }} drift score is {{ $value }} for deployment {{ $labels.deployment }}"
+
+      - alert: DataDriftCritical
+        expr: drift_score{status="critical"} > 0.30
+        for: 30m
+        labels:
+          severity: critical
+          team: ml
+        annotations:
+          summary: "Critical data drift detected"
+          description: "Feature {{ $labels.feature }} drift score is {{ $value }} for deployment {{ $labels.deployment }}. Consider retraining."
+          runbook_url: "https://docs.foundry.ai/runbooks/data-drift"
+
+  # =================================================
+  # Database Alerts
+  # =================================================
+  - name: foundry-database
+    interval: 30s
+    rules:
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_activity_count > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High PostgreSQL connections"
+          description: "PostgreSQL has {{ $value }} active connections"
+
+      - alert: PostgreSQLSlowQueries
+        expr: rate(pg_stat_statements_mean_time_seconds[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Slow PostgreSQL queries"
+          description: "Average query time is {{ $value | humanizeDuration }}"
+
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag_seconds > 30
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "PostgreSQL replication lag"
+          description: "Replication lag is {{ $value | humanizeDuration }}"
+
+  # =================================================
+  # Redis Alerts
+  # =================================================
+  - name: foundry-redis
+    interval: 30s
+    rules:
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: RedisHighEvictions
+        expr: rate(redis_evicted_keys_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High Redis eviction rate"
+          description: "Redis is evicting {{ $value }} keys/sec"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Redis is down"
+          description: "Redis instance is not responding"
+
+  # =================================================
+  # Kafka Alerts
+  # =================================================
+  - name: foundry-kafka
+    interval: 30s
+    rules:
+      - alert: KafkaConsumerLag
+        expr: kafka_consumer_group_lag > 10000
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High Kafka consumer lag"
+          description: "Consumer group {{ $labels.group }} has lag of {{ $value }} for topic {{ $labels.topic }}"
+
+      - alert: KafkaBrokerDown
+        expr: kafka_brokers < 1
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Kafka broker down"
+          description: "Kafka cluster has fewer brokers than expected"
+
+  # =================================================
+  # Worker Alerts
+  # =================================================
+  - name: foundry-worker
+    interval: 30s
+    rules:
+      - alert: CeleryTaskQueueHigh
+        expr: celery_queue_length > 1000
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High Celery task queue"
+          description: "Queue {{ $labels.queue }} has {{ $value }} pending tasks"
+
+      - alert: CeleryTaskFailureRate
+        expr: rate(celery_task_failed_total[5m]) / rate(celery_task_received_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High Celery task failure rate"
+          description: "Task failure rate is {{ $value | humanizePercentage }}"
+
+      - alert: CeleryWorkerDown
+        expr: celery_workers < 1
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "No Celery workers available"
+          description: "All Celery workers are down"

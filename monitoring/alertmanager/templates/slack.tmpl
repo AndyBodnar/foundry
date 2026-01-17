@@ -1,0 +1,47 @@
+{{ define "slack.title" }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ len .Alerts.Firing }}{{ end }}] {{ .GroupLabels.alertname }}
+{{ end }}
+
+{{ define "slack.text" }}
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* {{ .Labels.severity }}
+*Service:* {{ .Labels.service }}
+*Description:* {{ .Annotations.description }}
+{{ if .Annotations.runbook_url }}*Runbook:* <{{ .Annotations.runbook_url }}|View Runbook>{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "slack.color" }}
+{{ if eq .Status "firing" }}
+{{ if eq (index .Alerts 0).Labels.severity "critical" }}danger{{ else if eq (index .Alerts 0).Labels.severity "warning" }}warning{{ else }}#439FE0{{ end }}
+{{ else }}good{{ end }}
+{{ end }}
+
+{{ define "slack.silence_url" }}
+{{ .ExternalURL }}/#/silences/new?filter=%7B
+{{- range .CommonLabels.SortedPairs -}}
+{{- if ne .Name "alertname" -}}
+{{- .Name }}%3D%22{{- .Value -}}%22%2C%20
+{{- end -}}
+{{- end -}}
+alertname%3D%22{{ .CommonLabels.alertname }}%22%7D
+{{ end }}
+
+{{ define "pagerduty.description" }}
+{{ .GroupLabels.alertname }}: {{ (index .Alerts 0).Annotations.summary }}
+{{ end }}
+
+{{ define "pagerduty.firing" }}
+{{ range .Alerts.Firing }}
+- {{ .Labels.alertname }}: {{ .Annotations.description }}
+{{ end }}
+{{ end }}
+
+{{ define "pagerduty.runbook_url" }}
+{{ if (index .Alerts 0).Annotations.runbook_url }}{{ (index .Alerts 0).Annotations.runbook_url }}{{ else }}https://docs.foundry.ai/runbooks{{ end }}
+{{ end }}
+
+{{ define "pagerduty.dashboard_url" }}
+https://grafana.foundry.ai/d/foundry-overview
+{{ end }}

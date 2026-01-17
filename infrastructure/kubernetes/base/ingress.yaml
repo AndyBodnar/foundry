@@ -1,0 +1,198 @@
+---
+# Foundry MLOps Platform - Ingress Configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: foundry-ingress
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: foundry-mlops
+  annotations:
+    # Ingress Controller Configuration
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+    # TLS Configuration
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # Rate Limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+
+    # Request Size Limits
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+
+    # CORS (if not handled by application)
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://foundry.example.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type, X-Request-ID, X-Tenant-ID"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+
+    # Security Headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.foundry.example.com wss://api.foundry.example.com;" always;
+
+    # Upstream Hashing (for session stickiness if needed)
+    # nginx.ingress.kubernetes.io/upstream-hash-by: "$request_uri"
+
+    # Health Check
+    nginx.ingress.kubernetes.io/health-check-path: /health/ready
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - foundry.example.com
+        - api.foundry.example.com
+      secretName: foundry-tls
+  rules:
+    # Main Application / Dashboard
+    - host: foundry.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: foundry-frontend
+                port:
+                  number: 80
+          # API endpoints proxied from main domain
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: foundry-api
+                port:
+                  number: 80
+
+    # API Subdomain
+    - host: api.foundry.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: foundry-api
+                port:
+                  number: 80
+---
+# Inference Ingress - Separate for different rate limits and timeouts
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: foundry-inference-ingress
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry
+    app.kubernetes.io/component: inference-ingress
+    app.kubernetes.io/part-of: foundry-mlops
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # Higher rate limits for inference
+    nginx.ingress.kubernetes.io/limit-rps: "1000"
+    nginx.ingress.kubernetes.io/limit-connections: "500"
+
+    # Longer timeouts for batch inference
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+
+    # Larger body size for batch requests
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+
+    # Enable gRPC for inference
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - inference.foundry.example.com
+      secretName: foundry-inference-tls
+  rules:
+    - host: inference.foundry.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: foundry-inference
+                port:
+                  number: 80
+          # gRPC endpoint
+          - path: /grpc
+            pathType: Prefix
+            backend:
+              service:
+                name: foundry-inference
+                port:
+                  number: 9000
+---
+# Internal Ingress for monitoring tools (optional)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: foundry-internal-ingress
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry
+    app.kubernetes.io/component: internal-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+    # Whitelist internal IPs only
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+
+    # Basic auth for internal tools
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: foundry-internal-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Foundry Internal"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - internal.foundry.example.com
+      secretName: foundry-internal-tls
+  rules:
+    - host: internal.foundry.example.com
+      http:
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090
+          - path: /jaeger
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger-query
+                port:
+                  number: 16686

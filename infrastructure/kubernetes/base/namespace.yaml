@@ -1,0 +1,105 @@
+---
+# Foundry MLOps Platform - Kubernetes Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: foundry
+  labels:
+    app.kubernetes.io/name: foundry
+    app.kubernetes.io/part-of: foundry-mlops
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    description: "Foundry MLOps Platform namespace"
+---
+# Resource Quota for the namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: foundry-quota
+  namespace: foundry
+spec:
+  hard:
+    requests.cpu: "50"
+    requests.memory: 100Gi
+    limits.cpu: "100"
+    limits.memory: 200Gi
+    persistentvolumeclaims: "20"
+    pods: "100"
+    services: "20"
+    secrets: "50"
+    configmaps: "50"
+---
+# Limit Range for default resource constraints
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: foundry-limits
+  namespace: foundry
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "1"
+        memory: 1Gi
+      defaultRequest:
+        cpu: "100m"
+        memory: 256Mi
+      min:
+        cpu: "50m"
+        memory: 64Mi
+      max:
+        cpu: "8"
+        memory: 16Gi
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 100Gi
+---
+# Network Policy - Default deny ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: foundry
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Network Policy - Allow internal communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internal
+  namespace: foundry
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: foundry
+---
+# Network Policy - Allow ingress from ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-controller
+  namespace: foundry
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080

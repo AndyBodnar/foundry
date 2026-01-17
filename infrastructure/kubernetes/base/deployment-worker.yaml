@@ -1,0 +1,344 @@
+---
+# Foundry MLOps Platform - Worker Deployment (Celery)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foundry-worker
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry-worker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: foundry-mlops
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: foundry-worker
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: foundry-worker
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/part-of: foundry-mlops
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: foundry-worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: worker
+          image: foundry/worker:latest
+          imagePullPolicy: Always
+          command:
+            - celery
+            - -A
+            - foundry.workers.celery_app
+            - worker
+            - --loglevel=info
+            - --concurrency=4
+            - --queues=default,training,inference,monitoring
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: APP_ENV
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: LOG_LEVEL
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: POSTGRES_PORT
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: foundry-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: foundry-secrets
+                  key: POSTGRES_PASSWORD
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: REDIS_PORT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: foundry-secrets
+                  key: REDIS_PASSWORD
+            - name: CELERY_BROKER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: CELERY_BROKER_URL
+            - name: CELERY_RESULT_BACKEND
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: CELERY_RESULT_BACKEND
+            - name: S3_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: S3_ENDPOINT
+            - name: S3_BUCKET_ARTIFACTS
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: S3_BUCKET_ARTIFACTS
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: foundry-secrets
+                  key: S3_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: foundry-secrets
+                  key: S3_SECRET_KEY
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: OTEL_EXPORTER_OTLP_ENDPOINT
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - foundry.workers.celery_app
+                - inspect
+                - ping
+                - --timeout=10
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: worker-data
+              mountPath: /data
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: worker-data
+          emptyDir:
+            sizeLimit: 10Gi
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: foundry-worker
+                topologyKey: kubernetes.io/hostname
+---
+# Celery Beat Scheduler (singleton)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: foundry-scheduler
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry-scheduler
+    app.kubernetes.io/component: scheduler
+    app.kubernetes.io/part-of: foundry-mlops
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: foundry-scheduler
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: foundry-scheduler
+        app.kubernetes.io/component: scheduler
+        app.kubernetes.io/part-of: foundry-mlops
+    spec:
+      serviceAccountName: foundry-worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: scheduler
+          image: foundry/worker:latest
+          imagePullPolicy: Always
+          command:
+            - celery
+            - -A
+            - foundry.workers.celery_app
+            - beat
+            - --loglevel=info
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: APP_ENV
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: REDIS_PORT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: foundry-secrets
+                  key: REDIS_PASSWORD
+            - name: CELERY_BROKER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: foundry-config
+                  key: CELERY_BROKER_URL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: schedule-data
+              mountPath: /data
+      volumes:
+        - name: schedule-data
+          emptyDir: {}
+---
+# Horizontal Pod Autoscaler for Workers
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: foundry-worker-hpa
+  namespace: foundry
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: foundry-worker
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 30
+---
+# Pod Disruption Budget for Workers
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: foundry-worker-pdb
+  namespace: foundry
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: foundry-worker
+---
+# Service Account for Workers
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: foundry-worker
+  namespace: foundry
+  labels:
+    app.kubernetes.io/name: foundry-worker
+    app.kubernetes.io/component: worker

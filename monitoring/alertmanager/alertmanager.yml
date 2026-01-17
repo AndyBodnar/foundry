@@ -1,0 +1,172 @@
+# Foundry MLOps Platform - Alertmanager Configuration
+# =====================================================
+# This configuration handles alert routing, grouping, and notifications.
+
+global:
+  # Default SMTP configuration
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@foundry.ai'
+  smtp_auth_username: 'alertmanager@foundry.ai'
+  smtp_auth_password_file: '/etc/alertmanager/secrets/smtp_password'
+  smtp_require_tls: true
+
+  # Slack configuration (loaded from file for security)
+  slack_api_url_file: '/etc/alertmanager/secrets/slack_webhook_url'
+
+  # PagerDuty configuration
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+  # Default resolve timeout
+  resolve_timeout: 5m
+
+# Route tree for alert handling
+route:
+  # Default receiver
+  receiver: 'platform-team'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'service']
+
+  # Wait before sending first notification
+  group_wait: 30s
+
+  # Wait before sending updates
+  group_interval: 5m
+
+  # Wait before resending
+  repeat_interval: 4h
+
+  # Child routes
+  routes:
+    # Critical alerts go to PagerDuty immediately
+    - receiver: 'pagerduty-critical'
+      matchers:
+        - severity = "critical"
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true
+
+    # ML team alerts
+    - receiver: 'ml-team'
+      matchers:
+        - team = "ml"
+      group_by: ['alertname', 'model', 'deployment']
+
+    # Platform team alerts
+    - receiver: 'platform-team'
+      matchers:
+        - team = "platform"
+      group_by: ['alertname', 'service']
+
+    # Database alerts
+    - receiver: 'database-team'
+      matchers:
+        - service =~ "postgres|redis"
+      group_by: ['alertname', 'instance']
+
+    # Drift alerts - special handling
+    - receiver: 'ml-team-drift'
+      matchers:
+        - alertname =~ ".*Drift.*"
+      group_wait: 1h
+      repeat_interval: 24h
+
+# Inhibition rules to suppress less severe alerts
+inhibit_rules:
+  # If service is down, suppress other alerts for that service
+  - source_matchers:
+      - alertname =~ ".*Down"
+    target_matchers:
+      - severity =~ "warning|info"
+    equal: ['service', 'instance']
+
+  # If critical, suppress warnings for same alert
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal: ['alertname', 'service']
+
+# Receiver definitions
+receivers:
+  # Platform team - Slack notifications
+  - name: 'platform-team'
+    slack_configs:
+      - channel: '#foundry-alerts'
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: '{{ template "slack.color" . }}'
+        actions:
+          - type: button
+            text: 'Runbook'
+            url: '{{ (index .Alerts 0).Annotations.runbook_url }}'
+          - type: button
+            text: 'Silence'
+            url: '{{ template "slack.silence_url" . }}'
+
+  # ML team - Slack notifications
+  - name: 'ml-team'
+    slack_configs:
+      - channel: '#foundry-ml-alerts'
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: '{{ template "slack.color" . }}'
+
+  # ML team drift alerts - less frequent, with more context
+  - name: 'ml-team-drift'
+    slack_configs:
+      - channel: '#foundry-ml-drift'
+        send_resolved: true
+        title: 'Data Drift Alert'
+        text: |
+          *Deployment:* {{ .GroupLabels.deployment }}
+          *Features affected:* {{ len .Alerts }}
+          {{ range .Alerts }}
+          - {{ .Labels.feature }}: score={{ .Annotations.description }}
+          {{ end }}
+        color: '{{ template "slack.color" . }}'
+    email_configs:
+      - to: 'ml-team@foundry.ai'
+        send_resolved: true
+        headers:
+          Subject: '[Foundry] Data Drift Alert - {{ .GroupLabels.deployment }}'
+
+  # Database team
+  - name: 'database-team'
+    slack_configs:
+      - channel: '#foundry-database-alerts'
+        send_resolved: true
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        color: '{{ template "slack.color" . }}'
+
+  # PagerDuty for critical alerts
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key_file: '/etc/alertmanager/secrets/pagerduty_service_key'
+        send_resolved: true
+        severity: '{{ if eq .Status "firing" }}critical{{ else }}info{{ end }}'
+        description: '{{ template "pagerduty.description" . }}'
+        details:
+          firing: '{{ template "pagerduty.firing" . }}'
+          num_firing: '{{ len .Alerts.Firing }}'
+          num_resolved: '{{ len .Alerts.Resolved }}'
+        links:
+          - href: '{{ template "pagerduty.runbook_url" . }}'
+            text: 'Runbook'
+          - href: '{{ template "pagerduty.dashboard_url" . }}'
+            text: 'Dashboard'
+
+  # Email fallback
+  - name: 'email-fallback'
+    email_configs:
+      - to: 'platform-oncall@foundry.ai'
+        send_resolved: true
+        headers:
+          Subject: '[Foundry Alert] {{ .GroupLabels.alertname }} - {{ .Status }}'
+
+# Templates
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
