@@ -9,17 +9,66 @@
 [![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue.svg)](https://typescriptlang.org)
 [![Docker](https://img.shields.io/badge/docker-required-blue.svg)](https://docker.com)
 
-[Quick Start](#-quick-start) •
-[Features](#-features) •
-[Architecture](#-architecture) •
-[API Docs](#-api-documentation) •
-[Deployment](#-deployment)
+[What Is This?](#what-is-this) •
+[Quick Start](#quick-start) •
+[Features](#features) •
+[Architecture](#architecture) •
+[API Docs](#api-documentation)
 
 </div>
 
 ---
 
-## 🚀 Quick Start
+## What Is This?
+
+**Foundry is a management platform for machine learning models** — think of it like a control center for AI/ML in production.
+
+### The Problem
+
+When companies use machine learning, they run into problems that regular software doesn't have:
+
+| Problem | What Foundry Does |
+|---------|-------------------|
+| "Which version of the model is running right now?" | Tracks all versions like Git does for code |
+| "Our predictions suddenly got worse" | Monitors accuracy and alerts you when it drops |
+| "We want to test a new model without breaking production" | Lets you send 10% of traffic to the new model first |
+| "What settings did we use when we trained this?" | Logs all parameters, results, and files |
+| "Training and production compute features differently" | Single source of truth for all ML inputs |
+
+### What Foundry Does vs. What You Do
+
+| You Do | Foundry Does |
+|--------|--------------|
+| Train models (PyTorch, TensorFlow, scikit-learn) | Store and version those models |
+| Write ML code in notebooks or scripts | Track your experiments and results |
+| Decide which algorithms to use | Deploy models as APIs |
+| Label and prepare your data | Monitor performance and send alerts |
+| Run training on your GPUs/cloud | Manage traffic between model versions |
+
+**In short:** You create the models. Foundry manages everything after that.
+
+### Where Do Models Come From?
+
+Foundry doesn't create models — you bring them from:
+
+- **Your own training code** — Python scripts using PyTorch, TensorFlow, scikit-learn, XGBoost, etc.
+- **Jupyter notebooks** — Train, evaluate, export, then register in Foundry
+- **Pre-trained models** — Download from Hugging Face, PyTorch Hub, TensorFlow Hub, then fine-tune
+- **AutoML tools** — H2O, AutoGluon, Google AutoML, etc.
+- **Cloud ML services** — AWS SageMaker, Google Vertex AI, Azure ML
+
+Example workflow:
+```
+1. Train model in Jupyter notebook
+2. Save model file (model.pkl, model.pt, etc.)
+3. Register in Foundry via API
+4. Deploy through Foundry dashboard
+5. Monitor in Foundry
+```
+
+---
+
+## Quick Start
 
 ### Prerequisites
 
@@ -78,7 +127,7 @@ make dev-down
 
 ---
 
-## ✨ Features
+## Features
 
 ### Experiment Tracking
 - Track ML experiments with parameters, metrics, and artifacts
@@ -106,7 +155,7 @@ make dev-down
 - Auto-scaling based on load
 - Kubernetes-native deployment
 
-### Monitoring & Observability
+### Monitoring and Observability
 - Real-time metrics dashboards (Grafana)
 - Data drift detection with alerting
 - Model performance monitoring
@@ -119,7 +168,7 @@ make dev-down
 - Pipeline versioning
 - Automatic retraining triggers
 
-### Multi-Tenancy & Security
+### Multi-Tenancy and Security
 - Full tenant isolation
 - Role-based access control (RBAC)
 - JWT authentication with refresh tokens
@@ -128,7 +177,7 @@ make dev-down
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -180,9 +229,25 @@ make dev-down
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### What Each Service Does
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| **Dashboard** | 3000 | Web interface you interact with |
+| **API** | 8000 | REST API that powers everything |
+| **PostgreSQL** | 5432 | Main database for users, experiments, models |
+| **TimescaleDB** | 5433 | Time-series data (latency over time, etc.) |
+| **Redis** | 6379 | Fast cache and real-time feature serving |
+| **MinIO** | 9001 | File storage for model artifacts (S3-compatible) |
+| **Kafka** | 9092 | Event streaming for real-time processing |
+| **Prometheus** | 9090 | Collects metrics from all services |
+| **Grafana** | 3001 | Visualizes metrics in dashboards |
+| **Alertmanager** | 9093 | Routes alerts to Slack, email, PagerDuty |
+| **Jaeger** | 16686 | Traces requests across services for debugging |
+
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 foundry/
@@ -229,32 +294,12 @@ foundry/
 │
 ├── infrastructure/               # Deployment Configs
 │   ├── kubernetes/              # K8s manifests
-│   │   └── base/                # Base manifests
-│   │       ├── namespace.yaml
-│   │       ├── deployment.yaml
-│   │       ├── service.yaml
-│   │       ├── configmap.yaml
-│   │       ├── secret.yaml
-│   │       ├── ingress.yaml
-│   │       ├── hpa.yaml
-│   │       ├── pdb.yaml
-│   │       └── networkpolicy.yaml
 │   └── terraform/               # Infrastructure as Code
-│       └── modules/
-│           ├── vpc/             # AWS VPC
-│           ├── rds/             # PostgreSQL RDS
-│           ├── elasticache/     # Redis ElastiCache
-│           └── s3/              # S3 buckets
 │
 ├── monitoring/                   # Observability Configs
-│   ├── prometheus/
-│   │   ├── prometheus.yml       # Scrape configs
-│   │   └── rules/               # Alert rules
-│   ├── grafana/
-│   │   └── provisioning/        # Datasources & dashboards
-│   └── alertmanager/
-│       ├── alertmanager.yml     # Alert routing
-│       └── templates/           # Notification templates
+│   ├── prometheus/              # Scrape configs and alert rules
+│   ├── grafana/                 # Datasources and dashboards
+│   └── alertmanager/            # Alert routing
 │
 ├── scripts/                      # Init scripts
 │   ├── init-db.sql              # PostgreSQL init
@@ -262,18 +307,15 @@ foundry/
 │
 ├── docker-compose.yml           # Run everything locally
 ├── Makefile                     # Common commands
-├── start.bat                    # Windows startup
-├── start.sh                     # Linux/Mac startup
-├── stop.bat                     # Windows stop
-├── stop.sh                      # Linux/Mac stop
+├── start.bat / start.sh         # Startup scripts
+├── stop.bat / stop.sh           # Stop scripts
 ├── .env.example                 # Environment template
-├── .gitignore
 └── README.md
 ```
 
 ---
 
-## 🔌 API Documentation
+## API Documentation
 
 ### Core Endpoints
 
@@ -323,7 +365,7 @@ Full interactive API documentation available at:
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Backend
 - **FastAPI** - High-performance async Python web framework
@@ -361,7 +403,7 @@ Full interactive API documentation available at:
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
 ### Local Development
 
@@ -415,7 +457,7 @@ make tf-apply ENV=production
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Copy `.env.example` to `.env` and configure:
 
@@ -445,11 +487,11 @@ JWT_SECRET_KEY=generate-with-openssl-rand-base64-64
 ENVIRONMENT=production
 ```
 
-⚠️ **Important**: Change all default passwords before deploying to production!
+**Important**: Change all default passwords before deploying to production!
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
@@ -467,7 +509,7 @@ make test-coverage
 
 ---
 
-## 📊 Monitoring
+## Monitoring
 
 ### Grafana Dashboards
 
@@ -489,7 +531,7 @@ Alerts configured in Prometheus:
 
 ---
 
-## 🔒 Security
+## Security
 
 - **Authentication**: JWT with access/refresh tokens
 - **Authorization**: Role-based access control (Admin, User, Viewer)
@@ -500,7 +542,7 @@ Alerts configured in Prometheus:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -510,12 +552,12 @@ Alerts configured in Prometheus:
 
 ---
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
 <div align="center">
-Built with ❤️ for the ML community
+Built for the ML community
 </div>
