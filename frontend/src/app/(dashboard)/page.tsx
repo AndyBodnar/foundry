@@ -20,106 +20,40 @@ import { DonutChart } from '@/components/charts/donut-chart';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-// Mock data
+// Data placeholders - connect to API for real data
 const stats = {
-  experiments: 47,
-  experimentsDelta: 12,
-  models: 23,
-  modelsDelta: 3,
-  deployments: 8,
-  deploymentsDelta: 2,
-  alerts: 3,
-  alertsDelta: -1,
+  experiments: 0,
+  experimentsDelta: 0,
+  models: 0,
+  modelsDelta: 0,
+  deployments: 0,
+  deploymentsDelta: 0,
+  alerts: 0,
+  alertsDelta: 0,
 };
 
-const inferenceData = [
-  { time: '00:00', requests: 12400 },
-  { time: '04:00', requests: 8200 },
-  { time: '08:00', requests: 24300 },
-  { time: '12:00', requests: 42100 },
-  { time: '16:00', requests: 38700 },
-  { time: '20:00', requests: 28500 },
-  { time: 'Now', requests: 31200 },
-];
+const inferenceData: { time: string; requests: number }[] = [];
 
-const modelDistribution = [
-  { name: 'Production', value: 8, color: '#00ff88' },
-  { name: 'Staging', value: 5, color: '#ffff00' },
-  { name: 'Development', value: 10, color: '#00f5ff' },
-];
+const modelDistribution: { name: string; value: number; color: string }[] = [];
 
-const recentActivity = [
-  {
-    id: '1',
-    type: 'MODEL_DEPLOYED' as const,
-    title: 'Model deployed to production',
-    description: 'fraud-detector-v3 is now serving 100% of traffic',
-    time: '5 min ago',
-    status: 'success',
-  },
-  {
-    id: '2',
-    type: 'ALERT_TRIGGERED' as const,
-    title: 'High latency alert triggered',
-    description: 'churn-predictor p99 latency exceeded 500ms',
-    time: '23 min ago',
-    status: 'warning',
-  },
-  {
-    id: '3',
-    type: 'RUN_COMPLETED' as const,
-    title: 'Experiment run completed',
-    description: 'xgboost-hyperparameter-search achieved 94.7% accuracy',
-    time: '1 hour ago',
-    status: 'success',
-  },
-  {
-    id: '4',
-    type: 'DRIFT_DETECTED' as const,
-    title: 'Data drift detected',
-    description: 'Feature "user_age" showing significant drift in recommendation-engine',
-    time: '2 hours ago',
-    status: 'warning',
-  },
-  {
-    id: '5',
-    type: 'MODEL_REGISTERED' as const,
-    title: 'New model version registered',
-    description: 'customer-segmentation-v2 registered with improved metrics',
-    time: '3 hours ago',
-    status: 'info',
-  },
-];
+const recentActivity: {
+  id: string;
+  type: 'MODEL_DEPLOYED' | 'ALERT_TRIGGERED' | 'RUN_COMPLETED' | 'DRIFT_DETECTED' | 'MODEL_REGISTERED';
+  title: string;
+  description: string;
+  time: string;
+  status: string;
+}[] = [];
 
-const activeDeployments = [
-  {
-    id: '1',
-    name: 'fraud-detector',
-    model: 'fraud-model-v3',
-    status: 'RUNNING' as const,
-    replicas: { ready: 3, total: 3 },
-    latencyP99: 45,
-    requestsPerSec: 2340,
-  },
-  {
-    id: '2',
-    name: 'churn-predictor',
-    model: 'churn-v2',
-    status: 'RUNNING' as const,
-    replicas: { ready: 2, total: 2 },
-    latencyP99: 128,
-    requestsPerSec: 890,
-  },
-  {
-    id: '3',
-    name: 'recommendation-engine',
-    model: 'rec-v4',
-    status: 'RUNNING' as const,
-    replicas: { ready: 5, total: 5 },
-    latencyP99: 67,
-    requestsPerSec: 5670,
-  },
-];
+const activeDeployments: {
+  id: string;
+  name: string;
+  model: string;
+  status: 'RUNNING' | 'STOPPED' | 'FAILED';
+  replicas: { ready: number; total: number };
+  latencyP99: number;
+  requestsPerSec: number;
+}[] = [];
 
 function getActivityIcon(type: string) {
   switch (type) {

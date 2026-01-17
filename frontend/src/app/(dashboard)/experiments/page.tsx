@@ -39,81 +39,8 @@ import { DataTable } from '@/components/shared/data-table';
 import { format } from 'date-fns';
 import type { Experiment } from '@/types';
 
-// Mock data
-const experiments: Experiment[] = [
-  {
-    id: '1',
-    tenantId: 't1',
-    name: 'fraud-detection-xgboost',
-    description: 'XGBoost model for fraud detection with hyperparameter tuning',
-    tags: ['fraud', 'xgboost', 'production'],
-    runsCount: 24,
-    bestMetric: 0.947,
-    bestMetricName: 'accuracy',
-    createdAt: '2025-01-15T10:30:00Z',
-    updatedAt: '2025-01-17T08:15:00Z',
-  },
-  {
-    id: '2',
-    tenantId: 't1',
-    name: 'churn-prediction-lstm',
-    description: 'LSTM-based model for customer churn prediction',
-    tags: ['churn', 'lstm', 'deep-learning'],
-    runsCount: 18,
-    bestMetric: 0.892,
-    bestMetricName: 'f1_score',
-    createdAt: '2025-01-10T14:20:00Z',
-    updatedAt: '2025-01-16T16:45:00Z',
-  },
-  {
-    id: '3',
-    tenantId: 't1',
-    name: 'recommendation-engine-v2',
-    description: 'Collaborative filtering for product recommendations',
-    tags: ['recommendations', 'collaborative-filtering'],
-    runsCount: 32,
-    bestMetric: 0.156,
-    bestMetricName: 'ndcg@10',
-    createdAt: '2025-01-05T09:00:00Z',
-    updatedAt: '2025-01-17T11:30:00Z',
-  },
-  {
-    id: '4',
-    tenantId: 't1',
-    name: 'sentiment-analysis-bert',
-    description: 'BERT fine-tuning for customer review sentiment analysis',
-    tags: ['nlp', 'bert', 'sentiment'],
-    runsCount: 12,
-    bestMetric: 0.912,
-    bestMetricName: 'accuracy',
-    createdAt: '2025-01-12T11:15:00Z',
-    updatedAt: '2025-01-15T09:20:00Z',
-  },
-  {
-    id: '5',
-    tenantId: 't1',
-    name: 'demand-forecasting',
-    description: 'Time series forecasting for inventory demand',
-    tags: ['forecasting', 'time-series', 'prophet'],
-    runsCount: 8,
-    bestMetric: 0.087,
-    bestMetricName: 'mape',
-    createdAt: '2025-01-08T16:40:00Z',
-    updatedAt: '2025-01-14T13:55:00Z',
-  },
-  {
-    id: '6',
-    tenantId: 't1',
-    name: 'image-classification-resnet',
-    description: 'ResNet50 transfer learning for product image classification',
-    tags: ['cv', 'resnet', 'transfer-learning'],
-    runsCount: 15,
-    bestMetric: 0.968,
-    bestMetricName: 'top5_accuracy',
-    createdAt: '2025-01-03T08:30:00Z',
-    updatedAt: '2025-01-13T17:10:00Z',
-  },
-];
+// Data placeholder - connect to API for real data
+const experiments: Experiment[] = [];
 
 const columns: ColumnDef<Experiment>[] = [
   {

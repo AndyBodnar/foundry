@@ -40,64 +40,8 @@ import { DataTable } from '@/components/shared/data-table';
 import { format } from 'date-fns';
 import type { RegisteredModel } from '@/types';
 
-// Mock data
-const models: RegisteredModel[] = [
-  {
-    id: '1',
-    tenantId: 't1',
-    name: 'fraud-detector',
-    description: 'XGBoost model for real-time fraud detection in transactions',
-    latestVersion: 'v3.2.1',
-    versionsCount: 12,
-    tags: ['fraud', 'xgboost', 'real-time'],
-    createdAt: '2024-11-15T10:30:00Z',
-    updatedAt: '2025-01-17T08:15:00Z',
-  },
-  {
-    id: '2',
-    tenantId: 't1',
-    name: 'churn-predictor',
-    description: 'LSTM-based customer churn prediction model',
-    latestVersion: 'v2.1.0',
-    versionsCount: 8,
-    tags: ['churn', 'lstm', 'customer'],
-    createdAt: '2024-12-01T14:20:00Z',
-    updatedAt: '2025-01-16T16:45:00Z',
-  },
-  {
-    id: '3',
-    tenantId: 't1',
-    name: 'recommendation-engine',
-    description: 'Collaborative filtering model for product recommendations',
-    latestVersion: 'v4.0.0',
-    versionsCount: 15,
-    tags: ['recommendations', 'collaborative'],
-    createdAt: '2024-10-05T09:00:00Z',
-    updatedAt: '2025-01-17T11:30:00Z',
-  },
-  {
-    id: '4',
-    tenantId: 't1',
-    name: 'sentiment-analyzer',
-    description: 'BERT-based sentiment analysis for customer reviews',
-    latestVersion: 'v1.5.0',
-    versionsCount: 6,
-    tags: ['nlp', 'bert', 'sentiment'],
-    createdAt: '2025-01-02T11:15:00Z',
-    updatedAt: '2025-01-15T09:20:00Z',
-  },
-  {
-    id: '5',
-    tenantId: 't1',
-    name: 'demand-forecaster',
-    description: 'Prophet-based demand forecasting for inventory',
-    latestVersion: 'v2.0.3',
-    versionsCount: 9,
-    tags: ['forecasting', 'prophet', 'inventory'],
-    createdAt: '2024-12-08T16:40:00Z',
-    updatedAt: '2025-01-14T13:55:00Z',
-  },
-];
+// Data placeholder - connect to API for real data
+const models: RegisteredModel[] = [];
 
 const columns: ColumnDef<RegisteredModel>[] = [
   {

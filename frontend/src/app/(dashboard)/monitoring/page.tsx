@@ -31,88 +31,11 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Alert, DriftStatus, AlertSeverity } from '@/types';
 
-// Mock alerts
-const alerts: Alert[] = [
-  {
-    id: '1',
-    tenantId: 't1',
-    deploymentId: 'd1',
-    ruleId: 'r1',
-    severity: 'P2' as AlertSeverity,
-    status: 'ACTIVE',
-    title: 'High latency detected',
-    message: 'fraud-detector p99 latency exceeded 500ms threshold for 5 minutes',
-    triggeredAt: '2025-01-17T10:30:00Z',
-  },
-  {
-    id: '2',
-    tenantId: 't1',
-    deploymentId: 'd2',
-    ruleId: 'r2',
-    severity: 'P3' as AlertSeverity,
-    status: 'ACTIVE',
-    title: 'Data drift warning',
-    message: 'Feature "transaction_amount" showing moderate drift (PSI: 0.15)',
-    triggeredAt: '2025-01-17T09:45:00Z',
-  },
-  {
-    id: '3',
-    tenantId: 't1',
-    deploymentId: 'd1',
-    ruleId: 'r3',
-    severity: 'P1' as AlertSeverity,
-    status: 'ACKNOWLEDGED',
-    title: 'Model accuracy drop',
-    message: 'fraud-detector accuracy dropped below 90% threshold',
-    triggeredAt: '2025-01-17T08:15:00Z',
-    acknowledgedAt: '2025-01-17T08:20:00Z',
-    acknowledgedBy: 'john.doe',
-  },
-  {
-    id: '4',
-    tenantId: 't1',
-    deploymentId: 'd3',
-    ruleId: 'r4',
-    severity: 'P4' as AlertSeverity,
-    status: 'RESOLVED',
-    title: 'High error rate',
-    message: 'recommendation-engine error rate exceeded 1%',
-    triggeredAt: '2025-01-16T14:00:00Z',
-    resolvedAt: '2025-01-16T14:30:00Z',
-  },
-];
-
-// Mock drift data
-const driftData = [
-  { time: 'Jan 10', fraud_detector: 0.05, churn_predictor: 0.08, recommendation: 0.03 },
-  { time: 'Jan 11', fraud_detector: 0.06, churn_predictor: 0.09, recommendation: 0.04 },
-  { time: 'Jan 12', fraud_detector: 0.08, churn_predictor: 0.12, recommendation: 0.05 },
-  { time: 'Jan 13', fraud_detector: 0.07, churn_predictor: 0.15, recommendation: 0.06 },
-  { time: 'Jan 14', fraud_detector: 0.09, churn_predictor: 0.18, recommendation: 0.07 },
-  { time: 'Jan 15', fraud_detector: 0.12, churn_predictor: 0.22, recommendation: 0.08 },
-  { time: 'Jan 16', fraud_detector: 0.15, churn_predictor: 0.25, recommendation: 0.09 },
-  { time: 'Jan 17', fraud_detector: 0.18, churn_predictor: 0.28, recommendation: 0.10 },
-];
-
-// Mock feature drift
-const featureDrift = [
-  { name: 'transaction_amount', score: 0.25, status: 'HIGH' as DriftStatus },
-  { name: 'user_age', score: 0.18, status: 'MEDIUM' as DriftStatus },
-  { name: 'device_type', score: 0.12, status: 'LOW' as DriftStatus },
-  { name: 'time_of_day', score: 0.08, status: 'LOW' as DriftStatus },
-  { name: 'merchant_category', score: 0.05, status: 'NONE' as DriftStatus },
-];
-
-// Mock performance metrics
-const performanceData = [
-  { time: '00:00', accuracy: 0.945, precision: 0.932, recall: 0.918 },
-  { time: '04:00', accuracy: 0.943, precision: 0.930, recall: 0.915 },
-  { time: '08:00', accuracy: 0.941, precision: 0.928, recall: 0.912 },
-  { time: '12:00', accuracy: 0.938, precision: 0.925, recall: 0.908 },
-  { time: '16:00', accuracy: 0.936, precision: 0.922, recall: 0.905 },
-  { time: '20:00', accuracy: 0.934, precision: 0.920, recall: 0.902 },
-  { time: 'Now', accuracy: 0.932, precision: 0.918, recall: 0.900 },
-];
+// Data placeholders - connect to API for real data
+const alerts: Alert[] = [];
+const driftData: { time: string; fraud_detector: number; churn_predictor: number; recommendation: number }[] = [];
+const featureDrift: { name: string; score: number; status: DriftStatus }[] = [];
+const performanceData: { time: string; accuracy: number; precision: number; recall: number }[] = [];
 
 function getSeverityColor(severity: AlertSeverity) {
   switch (severity) {
